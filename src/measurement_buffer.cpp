@@ -145,6 +145,7 @@ void MeasurementBuffer::BufferROSCloud(
 
     pcl::PCLPointCloud2::Ptr cloud_pcl(new pcl::PCLPointCloud2());
     pcl::PCLPointCloud2::Ptr cloud_filtered(new pcl::PCLPointCloud2());
+    pcl::PCLPointCloud2::Ptr cloud_filtered_2(new pcl::PCLPointCloud2());
 
     // remove points that are below or above our height restrictions, and
     // in the same time, remove NaNs and if user wants to use it, combine with a
@@ -167,9 +168,17 @@ void MeasurementBuffer::BufferROSCloud(
       pass_through_filter.setKeepOrganized(false);
       pass_through_filter.setFilterFieldName("z");
       pass_through_filter.setFilterLimits(
-        _min_obstacle_height, _max_obstacle_height);
+        -_max_obstacle_height, _max_obstacle_height);
       pass_through_filter.filter(*cloud_filtered);
-      pcl_conversions::fromPCL(*cloud_filtered, *cld_global);
+            pcl::PassThrough<pcl::PCLPointCloud2> pass_through_filter_2;
+      pass_through_filter_2.setInputCloud(cloud_filtered);
+      pass_through_filter_2.setKeepOrganized(false);
+      pass_through_filter_2.setFilterFieldName("z");
+      pass_through_filter_2.setFilterLimits(
+        -_min_obstacle_height, _min_obstacle_height);
+      pass_through_filter_2.setFilterLimitsNegative(true);
+      pass_through_filter_2.filter(*cloud_filtered_2);
+      pcl_conversions::fromPCL(*cloud_filtered_2, *cld_global);
     }
 
     _observation_list.front()._cloud.reset(cld_global.release());
