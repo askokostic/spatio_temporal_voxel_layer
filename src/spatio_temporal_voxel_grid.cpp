@@ -112,6 +112,7 @@ void SpatioTemporalVoxelGrid::ClearFrustums(
 
   if (clearing_readings.size() == 0) {
     TemporalClearAndGenerateCostmap(obs_frustums, cleared_cells);
+    //MarkGround(obs_frustums);
     return;
   }
 
@@ -141,6 +142,7 @@ void SpatioTemporalVoxelGrid::ClearFrustums(
     obs_frustums.emplace_back(frustum, it->_decay_acceleration);
   }
   TemporalClearAndGenerateCostmap(obs_frustums, cleared_cells);
+  //MarkGround(obs_frustums);
 }
 
 /*****************************************************************************/
@@ -173,6 +175,11 @@ void SpatioTemporalVoxelGrid::TemporalClearAndGenerateCostmap(
 
       if (frustum_it->frustum->IsInside(pose_world) ) {
         frustum_cycle = true;
+
+        // if (pose_world[2] < 0.1 && pose_world[2] > -0.1)
+        // {
+        //   MarkGridPoint(pt_index, cur_time);
+        // }
 
         const double frustum_acceleration = GetFrustumAcceleration(
           time_since_marking, frustum_it->accel_factor);
@@ -207,6 +214,8 @@ void SpatioTemporalVoxelGrid::TemporalClearAndGenerateCostmap(
         }
       }
     }
+
+
     
     if (cleared_point)
     {
@@ -217,7 +226,19 @@ void SpatioTemporalVoxelGrid::TemporalClearAndGenerateCostmap(
       // if here, we can add to costmap and PC2
       PopulateCostmapAndPointcloud(pt_index);
     }
+      
+    for (; frustum_it != frustums.end(); ++frustum_it) 
+    {
+      if (frustum_it->frustum->IsInside(pose_world) )
+      {
+        openvdb::Vec3d ground_grid(this->WorldToIndex(openvdb::Vec3d(pose_world[0], pose_world[1], 0)));
+        MarkGridPoint(openvdb::Coord(ground_grid[0], ground_grid[1], ground_grid[2]), cur_time);
+      }
+    }
+
+    
   }
+
 }
 
 /*****************************************************************************/
@@ -231,7 +252,7 @@ void SpatioTemporalVoxelGrid::PopulateCostmapAndPointcloud(
   if (_pub_voxels) {
     geometry_msgs::msg::Point32 point;
     point.x = pose_world[0];
-    point.y = pose_world[1];
+    point.y = pose_world[1]; 
     point.z = pose_world[2];
     _grid_points->push_back(point);
   }
@@ -262,6 +283,47 @@ void SpatioTemporalVoxelGrid::Mark(
   }
 }
 
+// /*****************************************************************************/
+// //void SpatioTemporalVoxelGrid::MarkGround(std::vector<frustum_model> & frustums)
+// void SpatioTemporalVoxelGrid::MarkGround()
+// /*****************************************************************************/
+// {
+//   const double cur_time = _clock->now().seconds();
+
+//   // check each point in the grid for inclusion in a frustum
+//   openvdb::DoubleGrid::ValueOnCIter cit_grid = _grid->cbeginValueOn();
+//   for (; cit_grid.test(); ++cit_grid) 
+//   {
+//     const openvdb::Coord pt_index(cit_grid.getCoord());
+//     const openvdb::Vec3d pose_world = this->IndexToWorld(pt_index);
+    
+//     //std::vector<frustum_model>::iterator frustum_it = frustums.begin();
+
+//     openvdb::Vec3d ground_grid(this->WorldToIndex(openvdb::Vec3d(pose_world[0], pose_world[1], 0)));
+//     MarkGridPoint(openvdb::Coord(ground_grid[0], ground_grid[1], ground_grid[2]), cur_time);
+
+//     // if (pose_world[2] < 0.1 && pose_world[2] > -0.1)
+//     // {
+//     //   MarkGridPoint(pt_index, cur_time);
+//     // }
+
+//     // for (; frustum_it != frustums.end(); ++frustum_it) 
+//     // {
+//     //   if (frustum_it->frustum->IsInside(pose_world) )
+//     //   {
+//     //     if (pose_world[2] < 0.1 && pose_world[2] > -0.1)
+//     //     {
+//     //       MarkGridPoint(pt_index, cur_time);
+//     //     }
+//     //   }
+//     // }
+//   }
+
+//   // if (pose_world[2] < 0.1 && pose_world[2] > -0.1)
+//   // {
+//   //   MarkGridPoint(pt_index, cur_time);
+//   // }
+// }
 /*****************************************************************************/
 void SpatioTemporalVoxelGrid::operator()(
   const observation::MeasurementReading & obs) const
@@ -295,8 +357,20 @@ void SpatioTemporalVoxelGrid::operator()(
             mark_grid[2]), cur_time))
       {
         std::cout << "Failed to mark point." << std::endl;
+      } 
+
+      openvdb::Vec3d clear_grid(this->WorldToIndex(openvdb::Vec3d(*iter_x, *iter_y, 0)));
+
+      if (*iter_z < 0.1 && *iter_z > -0.1) //TODO: min_obstacle_hight insted of fixed value
+      {
+        ClearGridPoint(openvdb::Coord(mark_grid[0], mark_grid[1], mark_grid[2]));
+        ClearGridPoint(openvdb::Coord(clear_grid[0], clear_grid[1], clear_grid[2]));
       }
     }
+        //     if (pose_world[2] < 0.1 && pose_world[2] > -0.1)
+        // {
+        //   MarkGridPoint(pt_index, cur_time);
+        // }
   }
 }
 

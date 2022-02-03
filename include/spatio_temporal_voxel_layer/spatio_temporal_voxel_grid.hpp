@@ -139,6 +139,8 @@ public:
   void ClearFrustums(
     const std::vector<observation::MeasurementReading> & clearing_observations,
     std::unordered_set<occupany_cell> & cleared_cells);
+  //void MarkGround(std::vector<frustum_model> & frustums);
+  //void MarkGround();
 
   // Get the pointcloud of the underlying occupancy grid
   void GetOccupancyPointCloud(std::unique_ptr<sensor_msgs::msg::PointCloud2> & pc2);
